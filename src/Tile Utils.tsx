@@ -29,7 +29,6 @@ class NumEdit {
     MIN = 10
     MAX = 10000
     private _group: Group
-    private _enable: boolean
 
     constructor(panel: Panel, title: string, val: number) {
         this._group = panel.add("group")
@@ -212,7 +211,7 @@ const makeTileLayers = (proj: Project, colNum: number, rowNum: number, width: nu
 }
 
 const makeWindow = (proj: Project) => {
-    const window = new Window("palette", SCRIPT_NAME)
+    const window = (this instanceof Panel) ? this as unknown as Panel : new Window("palette", SCRIPT_NAME)
 
     const panel = window.add("panel", undefined, "入力")
 
@@ -244,7 +243,6 @@ const makeWindow = (proj: Project) => {
 
         if (result){
             alert("タイル化完了")
-            window.close()
         }
     }
 
@@ -260,6 +258,10 @@ const OpenTileUtils = () => {
     }
 
     const window = makeWindow(proj)
-    window.show()
+    if(window instanceof Window){
+        window.show()
+    }else{
+        window.layout.layout()
+    }
 }
 OpenTileUtils()

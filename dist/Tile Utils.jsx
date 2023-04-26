@@ -1,3 +1,4 @@
+var _this = this;
 /// <reference types="types-for-adobe/AfterEffects/22.0"/>
 var SCRIPT_NAME = "Tile Utils";
 var SplitSlider = /** @class */ (function () {
@@ -171,7 +172,7 @@ var makeTileLayers = function (proj, colNum, rowNum, width, height) {
     app.endUndoGroup();
 };
 var makeWindow = function (proj) {
-    var window = new Window("palette", SCRIPT_NAME);
+    var window = (_this instanceof Panel) ? _this : new Window("palette", SCRIPT_NAME);
     var panel = window.add("panel", undefined, "入力");
     //分割数コントロール
     var colSlider = new SplitSlider(panel, "列数");
@@ -197,7 +198,6 @@ var makeWindow = function (proj) {
         var result = (compRadio.value) ? makeTileComps(proj, col, row, w, h) : makeTileLayers(proj, col, row, w, h);
         if (result) {
             alert("タイル化完了");
-            window.close();
         }
     };
     return window;
@@ -210,6 +210,11 @@ var OpenTileUtils = function () {
         return;
     }
     var window = makeWindow(proj);
-    window.show();
+    if (window instanceof Window) {
+        window.show();
+    }
+    else {
+        window.layout.layout();
+    }
 };
 OpenTileUtils();

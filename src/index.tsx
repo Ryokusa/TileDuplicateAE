@@ -8,19 +8,45 @@ class SplitSlider {
     txtBounds = [0,0,20,20]
     val: number = this.defaultNum
     constructor(panel:Panel, title: string) {
-
-        //colコントロール
         panel.add("statictext", undefined, title)
-        const colGroup = panel.add("group", undefined)
-        colGroup.orientation = "row"
-        const colVal = colGroup.add("statictext", this.txtBounds as Bounds, `${this.defaultNum}`)
-        const colSlider = colGroup.add("slider", undefined, this.defaultNum, this.defaultMinNum, this.defaultMaxNum)
-        colSlider.onChanging = () => {
-            colVal.text = `${Math.round(colSlider.value)}`
+        const group = panel.add("group", undefined)
+        group.orientation = "row"
+        const valTxt = group.add("statictext", this.txtBounds as Bounds, `${this.defaultNum}`)
+        const slider = group.add("slider", undefined, this.defaultNum, this.defaultMinNum, this.defaultMaxNum)
+        slider.onChanging = () => {
+            valTxt.text = `${Math.round(slider.value)}`
         }
-        colSlider.onChange = () => {
-            this.val = Math.round(colSlider.value)
-            colSlider.value = this.val
+        slider.onChange = () => {
+            this.val = Math.round(slider.value)
+            slider.value = this.val
+        }
+    }
+}
+
+class NumEdit {
+    val = 0
+    textBounds = [0,0,80,20]
+    MIN = 10
+    MAX = 10000
+
+    constructor(panel: Panel, title: string, val: number) {
+        const group = panel.add("group")
+        group.orientation = "row"
+        group.add("statictext", undefined, title)
+
+        this.val = val
+        const valTxt = group.add("edittext", this.textBounds as Bounds, `${val}`)
+        valTxt.onChange = () => {
+            this.val = parseInt(valTxt.text)
+            if(isNaN(this.val)){
+                alert("数字ではありません")
+                this.val = 0
+            }else if(this.val < this.MIN || this.val > this.MAX){
+                alert(`入力値が有効値域ではありません(${this.MIN} < [${title}] < ${this.MAX})`)
+                this.val = (this.val < this.MIN) ? this.MIN : this.MAX
+            }
+
+            valTxt.text = `${this.val}`
         }
     }
 }
@@ -34,7 +60,7 @@ const getActiveItem = (proj: Project): CompItem => {
     return activeItem
 }
 
-const TileComps = (proj: Project, x_num: number, y_num: number) => {
+const makeTileComps = (proj: Project, x_num: number, y_num: number) => {
     const activeItem = getActiveItem(proj)
     if(!activeItem) {
         alert("コンポジションを選択してください")
@@ -79,10 +105,13 @@ const makeWindow = (proj: Project) => {
     //分割数コントロール
     const colSlider = new SplitSlider(panel, "列数")
     const rowSlider = new SplitSlider(panel, "行数")
+    
+    const widthEdit = new NumEdit(panel, "横幅", 1920)
+    const heightEdit = new NumEdit(panel, "縦幅", 1080)
 
     const createBtn = panel.add("button", undefined, "作成")
     createBtn.onClick = () => {
-        if (TileComps(proj, colSlider.val, rowSlider.val)){
+        if (makeTileComps(proj, colSlider.val, rowSlider.val)){
             alert("タイル化完了")
             window.close()
         }

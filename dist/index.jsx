@@ -8,21 +8,47 @@ var SplitSlider = /** @class */ (function () {
         this.defaultMaxNum = 10;
         this.txtBounds = [0, 0, 20, 20];
         this.val = this.defaultNum;
-        //colコントロール
         panel.add("statictext", undefined, title);
-        var colGroup = panel.add("group", undefined);
-        colGroup.orientation = "row";
-        var colVal = colGroup.add("statictext", this.txtBounds, "".concat(this.defaultNum));
-        var colSlider = colGroup.add("slider", undefined, this.defaultNum, this.defaultMinNum, this.defaultMaxNum);
-        colSlider.onChanging = function () {
-            colVal.text = "".concat(Math.round(colSlider.value));
+        var group = panel.add("group", undefined);
+        group.orientation = "row";
+        var valTxt = group.add("statictext", this.txtBounds, "".concat(this.defaultNum));
+        var slider = group.add("slider", undefined, this.defaultNum, this.defaultMinNum, this.defaultMaxNum);
+        slider.onChanging = function () {
+            valTxt.text = "".concat(Math.round(slider.value));
         };
-        colSlider.onChange = function () {
-            _this.val = Math.round(colSlider.value);
-            colSlider.value = _this.val;
+        slider.onChange = function () {
+            _this.val = Math.round(slider.value);
+            slider.value = _this.val;
         };
     }
     return SplitSlider;
+}());
+var NumEdit = /** @class */ (function () {
+    function NumEdit(panel, title, val) {
+        var _this = this;
+        this.val = 0;
+        this.textBounds = [0, 0, 80, 20];
+        this.MIN = 10;
+        this.MAX = 10000;
+        var group = panel.add("group");
+        group.orientation = "row";
+        group.add("statictext", undefined, title);
+        this.val = val;
+        var valTxt = group.add("edittext", this.textBounds, "".concat(val));
+        valTxt.onChange = function () {
+            _this.val = parseInt(valTxt.text);
+            if (isNaN(_this.val)) {
+                alert("数字ではありません");
+                _this.val = 0;
+            }
+            else if (_this.val < _this.MIN || _this.val > _this.MAX) {
+                alert("\u5165\u529B\u5024\u304C\u6709\u52B9\u5024\u57DF\u3067\u306F\u3042\u308A\u307E\u305B\u3093(".concat(_this.MIN, " < [").concat(title, "] < ").concat(_this.MAX, ")"));
+                _this.val = (_this.val < _this.MIN) ? _this.MIN : _this.MAX;
+            }
+            valTxt.text = "".concat(_this.val);
+        };
+    }
+    return NumEdit;
 }());
 var getActiveItem = function (proj) {
     var activeItem = proj.activeItem;
@@ -62,6 +88,8 @@ var makeWindow = function (proj) {
     //分割数コントロール
     var colSlider = new SplitSlider(panel, "列数");
     var rowSlider = new SplitSlider(panel, "行数");
+    var widthEdit = new NumEdit(panel, "横幅", 1920);
+    var heightEdit = new NumEdit(panel, "縦幅", 1080);
     var createBtn = panel.add("button", undefined, "作成");
     createBtn.onClick = function () {
         if (TileComps(proj, colSlider.val, rowSlider.val)) {

@@ -28,14 +28,17 @@ class NumEdit {
     textBounds = [0,0,80,20]
     MIN = 10
     MAX = 10000
+    private _group: Group
+    private _enable: boolean
 
     constructor(panel: Panel, title: string, val: number) {
-        const group = panel.add("group")
-        group.orientation = "row"
-        group.add("statictext", undefined, title)
+        this._group = panel.add("group")
+        this._group.orientation = "row"
+        this._group.add("statictext", undefined, title)
+        this._group.enabled = false
 
         this.val = val
-        const valTxt = group.add("edittext", this.textBounds as Bounds, `${val}`)
+        const valTxt = this._group.add("edittext", this.textBounds as Bounds, `${val}`)
         valTxt.onChange = () => {
             this.val = parseInt(valTxt.text)
             if(isNaN(this.val)){
@@ -49,6 +52,10 @@ class NumEdit {
             valTxt.text = `${this.val}`
         }
     }
+
+    setEnabled(enabled: boolean){
+        this._group.enabled = enabled
+    }
 }
 
 
@@ -60,17 +67,20 @@ const getActiveItem = (proj: Project): CompItem => {
     return activeItem
 }
 
-const makeTileComps = (proj: Project, x_num: number, y_num: number, width: number, height: number) => {
+const makeTileComps = (proj: Project, x_num: number, y_num: number, width: number = -1, height: number = -1) => {
     const activeItem = getActiveItem(proj)
     if(!activeItem) {
         alert("コンポジションを選択してください")
         return false
     }
     
-    alert(`${width} ${height}`)
     app.beginUndoGroup(SCRIPT_NAME)
 
     const { height:h , width:w } = activeItem
+    if (width === -1) {
+        width = w*x_num
+        height = h*y_num
+    }
     const tileComp = proj.items.addComp(
         "Tile", width, height,
         activeItem.pixelAspect,
@@ -114,25 +124,35 @@ const makeWindow = (proj: Project) => {
     //分割数コントロール
     const colSlider = new SplitSlider(panel, "列数")
     const rowSlider = new SplitSlider(panel, "行数")
-    
+
+    const radio = panel.add("checkbox", undefined, "サイズ指定")
     const widthEdit = new NumEdit(panel, "横幅", 1920)
     const heightEdit = new NumEdit(panel, "縦幅", 1080)
+    radio.onClick = () => {
+        widthEdit.setEnabled(radio.value)
+        heightEdit.setEnabled(radio.value)
+    }
+    
 
-    const createBtn = panel.add("button", undefined, "作成")
+    const createBtn = window.add("button", undefined, "作成")
     createBtn.onClick = () => {
-        if (makeTileComps(proj, colSlider.val, rowSlider.val, widthEdit.val, heightEdit.val)){
+        const col = colSlider.val
+        const row = rowSlider.val
+        const w = (radio.value) ? widthEdit.val : -1
+        const h = (radio.value) ? heightEdit.val : -1
+        const result = makeTileComps(proj, col, row, w, h)
+
+        if (result){
             alert("タイル化完了")
             window.close()
-        }else{
-            alert("タイル化失敗")
         }
     }
 
     return window
 }
 
+//メイン
 const OpenTileUtils = () => {
-    //メイン
     const proj = app.project
     if(proj === null){
         alert("プロジェクトが開いていません", SCRIPT_NAME)

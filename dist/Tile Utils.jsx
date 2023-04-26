@@ -30,11 +30,12 @@ var NumEdit = /** @class */ (function () {
         this.textBounds = [0, 0, 80, 20];
         this.MIN = 10;
         this.MAX = 10000;
-        var group = panel.add("group");
-        group.orientation = "row";
-        group.add("statictext", undefined, title);
+        this._group = panel.add("group");
+        this._group.orientation = "row";
+        this._group.add("statictext", undefined, title);
+        this._group.enabled = false;
         this.val = val;
-        var valTxt = group.add("edittext", this.textBounds, "".concat(val));
+        var valTxt = this._group.add("edittext", this.textBounds, "".concat(val));
         valTxt.onChange = function () {
             _this.val = parseInt(valTxt.text);
             if (isNaN(_this.val)) {
@@ -48,6 +49,9 @@ var NumEdit = /** @class */ (function () {
             valTxt.text = "".concat(_this.val);
         };
     }
+    NumEdit.prototype.setEnabled = function (enabled) {
+        this._group.enabled = enabled;
+    };
     return NumEdit;
 }());
 var getActiveItem = function (proj) {
@@ -58,14 +62,19 @@ var getActiveItem = function (proj) {
     return activeItem;
 };
 var makeTileComps = function (proj, x_num, y_num, width, height) {
+    if (width === void 0) { width = -1; }
+    if (height === void 0) { height = -1; }
     var activeItem = getActiveItem(proj);
     if (!activeItem) {
         alert("コンポジションを選択してください");
         return false;
     }
-    alert("".concat(width, " ").concat(height));
     app.beginUndoGroup(SCRIPT_NAME);
     var h = activeItem.height, w = activeItem.width;
+    if (width === -1) {
+        width = w * x_num;
+        height = h * y_num;
+    }
     var tileComp = proj.items.addComp("Tile", width, height, activeItem.pixelAspect, activeItem.duration, activeItem.frameRate);
     var layers = tileComp.layers;
     var dw = width / x_num;
@@ -96,24 +105,29 @@ var makeWindow = function (proj) {
     //分割数コントロール
     var colSlider = new SplitSlider(panel, "列数");
     var rowSlider = new SplitSlider(panel, "行数");
+    var radio = panel.add("checkbox", undefined, "サイズ指定");
     var widthEdit = new NumEdit(panel, "横幅", 1920);
     var heightEdit = new NumEdit(panel, "縦幅", 1080);
-    var createBtn = panel.add("button", undefined, "作成");
+    radio.onClick = function () {
+        widthEdit.setEnabled(radio.value);
+        heightEdit.setEnabled(radio.value);
+    };
+    var createBtn = window.add("button", undefined, "作成");
     createBtn.onClick = function () {
-        if (makeTileComps(proj, colSlider.val, rowSlider.val, widthEdit.val, heightEdit.val)) {
+        var col = colSlider.val;
+        var row = rowSlider.val;
+        var w = (radio.value) ? widthEdit.val : -1;
+        var h = (radio.value) ? heightEdit.val : -1;
+        var result = makeTileComps(proj, col, row, w, h);
+        if (result) {
             alert("タイル化完了");
             window.close();
-        }
-        else {
-            alert("タイル化失敗");
         }
     };
     return window;
 };
-//サイズコントロール
-//TODO: 作成
+//メイン
 var OpenTileUtils = function () {
-    //メイン
     var proj = app.project;
     if (proj === null) {
         alert("プロジェクトが開いていません", SCRIPT_NAME);

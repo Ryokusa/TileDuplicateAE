@@ -57,7 +57,7 @@ var getActiveItem = function (proj) {
     }
     return activeItem;
 };
-var TileComps = function (proj, x_num, y_num) {
+var makeTileComps = function (proj, x_num, y_num) {
     var activeItem = getActiveItem(proj);
     if (!activeItem) {
         alert("コンポジションを選択してください");
@@ -92,7 +92,7 @@ var makeWindow = function (proj) {
     var heightEdit = new NumEdit(panel, "縦幅", 1080);
     var createBtn = panel.add("button", undefined, "作成");
     createBtn.onClick = function () {
-        if (TileComps(proj, colSlider.val, rowSlider.val)) {
+        if (makeTileComps(proj, colSlider.val, rowSlider.val)) {
             alert("タイル化完了");
             window.close();
         }

@@ -76,7 +76,62 @@ const getActiveLayer = (item: CompItem): AVLayer => {
     return activeLayer
 }
 
-const makeTileComps = (proj: Project, x_num: number, y_num: number, width: number = -1, height: number = -1) => {
+class Tile{
+    readonly width: number
+    readonly height: number
+    readonly colNum: number
+    readonly rowNum: number
+    readonly dw: number
+    readonly dh: number
+    readonly scale: number
+    
+    constructor(width: number, height: number, colNum: number, rowNum: number){
+        this.width = width
+        this.height = height
+        this.colNum = colNum
+        this.rowNum = rowNum
+
+        this.dw = width / colNum
+        this.dh = height / rowNum
+    }
+
+    getPos (col:number, row:number) {
+        return { 
+            x: col*this.dw,
+            y: row*this.dh 
+        }
+    }
+
+    // 入力サイズとタイル一つのサイズ比率計算
+    calcScale(width: number, height: number){
+        return {
+            x: this.dw / width,
+            y: this.dh / height
+        }
+    }
+}
+
+const makeTileLayer = (tile: Tile, layer: AVLayer, col: number, row: number) => {
+    const tileScale = tile.calcScale(layer.width, layer.height)
+    const multi = (tileScale.x > tileScale.y) ? tileScale.y*100 : tileScale.x*100
+
+    let layerScale = layer.scale as TwoDProperty
+    layerScale.setValue([
+        multi,
+        multi
+    ])
+
+    const pos = tile.getPos(col, row)
+    let layerPos = layer.position as TwoDProperty
+    layerPos.setValue([
+        pos.x + tile.dw/2,
+        pos.y + tile.dh/2
+    ])
+
+    return layer
+}
+
+const makeTileComps = (proj: Project, colNum: number, rowNum: number, width: number = -1, height: number = -1) => {
     const activeItem = getActiveItem(proj)
     if(!activeItem) {
         alert("コンポジションを選択してください")
@@ -85,10 +140,10 @@ const makeTileComps = (proj: Project, x_num: number, y_num: number, width: numbe
     
     app.beginUndoGroup(SCRIPT_NAME)
 
-    const { height:h , width:w } = activeItem
+    const { height:itemH , width:itemW } = activeItem
     if (width === -1) {
-        width = w*x_num
-        height = h*y_num
+        width = itemW*colNum
+        height = itemH*rowNum
     }
     const tileComp = proj.items.addComp(
         "Tile", width, height,
@@ -98,34 +153,23 @@ const makeTileComps = (proj: Project, x_num: number, y_num: number, width: numbe
         )
     const layers = tileComp.layers
 
-    const dw = width / x_num
-    const dh = height / y_num
+    const tile = new Tile(width, height, colNum, rowNum)
     
-    for (let i = 0; i < x_num*y_num; i++){
-        let x = i % x_num
-        let y = Math.floor(i / x_num)
+    for (let i = 0; i < colNum*rowNum; i++){
+        const col = i % colNum
+        const row = Math.floor(i / colNum)
 
-        let item = activeItem.duplicate()
-        let layer = layers.add(item)
-        let multi = ( dw * y_num > height) ? dh/h : dw/w
-        let scale = layer.scale as TwoDProperty
-        scale.setValue([
-            multi*100,
-            multi*100
-        ])
+        const item = activeItem.duplicate()
+        const layer = layers.add(item)
 
-        let pos = layer.position as TwoDProperty
-        pos.setValue([
-            x * dw + dw/2,
-            y * dh + dh/2
-        ])
+        makeTileLayer(tile, layer, col, row)
     }
 
     app.endUndoGroup()
     return true
 }
 
-const makeTileLayers = (proj: Project, x_num: number, y_num: number, width: number = -1, height: number = -1) => {
+const makeTileLayers = (proj: Project, colNum: number, rowNum: number, width: number = -1, height: number = -1) => {
     const activeItem = getActiveItem(proj)
     if(!activeItem) {
         alert("コンポジションを一つ選択してください")
@@ -144,43 +188,31 @@ const makeTileLayers = (proj: Project, x_num: number, y_num: number, width: numb
     const h = activeLayer.height
     const w = activeLayer.width
     if(width === -1){
-        width = w * x_num
-        height = h * y_num
+        width = w * colNum
+        height = h * rowNum
     }
     activeItem.width = width
     activeItem.height = height
 
-    const dw = width / x_num
-    const dh = height / y_num
+    const tile = new Tile(width, height, colNum, rowNum)
 
     const pos = activeLayer.position as TwoDProperty
-    pos.setValue([dw/2, dh/2])
+    pos.setValue([tile.dw/2, tile.dh/2])
 
-    for (var i = 1; i < x_num*y_num; i++){
-        const x = i % x_num
-        const y = Math.floor(i / x_num)
+    for (var i = 1; i < colNum*rowNum; i++){
+        const col = i % colNum
+        const row = Math.floor(i / colNum)
 
-        const layer = activeLayer.duplicate()
+        const layer = activeLayer.duplicate() as AVLayer
 
-        const multi = ( dw * y_num > height) ? dh/h : dw/w
-        const scale = layer.scale as TwoDProperty
-        scale.setValue([
-            multi*100,
-            multi*100
-        ])
-
-        const pos = layer.position as TwoDProperty
-        pos.setValue([
-            x * w + dw/2,
-            y * h + dh/2
-        ])
+        makeTileLayer(tile, layer, col, row)
     }
 
     app.endUndoGroup()
 }
 
 const makeWindow = (proj: Project) => {
-    const window = new Window("palette", "タイル化スクリプト")
+    const window = new Window("palette", SCRIPT_NAME)
 
     const panel = window.add("panel", undefined, "入力")
 

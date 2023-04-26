@@ -70,7 +70,47 @@ var getActiveLayer = function (item) {
     }
     return activeLayer;
 };
-var makeTileComps = function (proj, x_num, y_num, width, height) {
+var Tile = /** @class */ (function () {
+    function Tile(width, height, colNum, rowNum) {
+        this.width = width;
+        this.height = height;
+        this.colNum = colNum;
+        this.rowNum = rowNum;
+        this.dw = width / colNum;
+        this.dh = height / rowNum;
+    }
+    Tile.prototype.getPos = function (col, row) {
+        return {
+            x: col * this.dw,
+            y: row * this.dh
+        };
+    };
+    // 入力サイズとタイル一つのサイズ比率計算
+    Tile.prototype.calcScale = function (width, height) {
+        return {
+            x: this.dw / width,
+            y: this.dh / height
+        };
+    };
+    return Tile;
+}());
+var makeTileLayer = function (tile, layer, col, row) {
+    var tileScale = tile.calcScale(layer.width, layer.height);
+    var multi = (tileScale.x > tileScale.y) ? tileScale.y * 100 : tileScale.x * 100;
+    var layerScale = layer.scale;
+    layerScale.setValue([
+        multi,
+        multi
+    ]);
+    var pos = tile.getPos(col, row);
+    var layerPos = layer.position;
+    layerPos.setValue([
+        pos.x + tile.dw / 2,
+        pos.y + tile.dh / 2
+    ]);
+    return layer;
+};
+var makeTileComps = function (proj, colNum, rowNum, width, height) {
     if (width === void 0) { width = -1; }
     if (height === void 0) { height = -1; }
     var activeItem = getActiveItem(proj);
@@ -79,36 +119,25 @@ var makeTileComps = function (proj, x_num, y_num, width, height) {
         return false;
     }
     app.beginUndoGroup(SCRIPT_NAME);
-    var h = activeItem.height, w = activeItem.width;
+    var itemH = activeItem.height, itemW = activeItem.width;
     if (width === -1) {
-        width = w * x_num;
-        height = h * y_num;
+        width = itemW * colNum;
+        height = itemH * rowNum;
     }
     var tileComp = proj.items.addComp("Tile", width, height, activeItem.pixelAspect, activeItem.duration, activeItem.frameRate);
     var layers = tileComp.layers;
-    var dw = width / x_num;
-    var dh = height / y_num;
-    for (var i = 0; i < x_num * y_num; i++) {
-        var x = i % x_num;
-        var y = Math.floor(i / x_num);
+    var tile = new Tile(width, height, colNum, rowNum);
+    for (var i = 0; i < colNum * rowNum; i++) {
+        var col = i % colNum;
+        var row = Math.floor(i / colNum);
         var item = activeItem.duplicate();
         var layer = layers.add(item);
-        var multi = (dw * y_num > height) ? dh / h : dw / w;
-        var scale = layer.scale;
-        scale.setValue([
-            multi * 100,
-            multi * 100
-        ]);
-        var pos = layer.position;
-        pos.setValue([
-            x * dw + dw / 2,
-            y * dh + dh / 2
-        ]);
+        makeTileLayer(tile, layer, col, row);
     }
     app.endUndoGroup();
     return true;
 };
-var makeTileLayers = function (proj, x_num, y_num, width, height) {
+var makeTileLayers = function (proj, colNum, rowNum, width, height) {
     if (width === void 0) { width = -1; }
     if (height === void 0) { height = -1; }
     var activeItem = getActiveItem(proj);
@@ -122,39 +151,27 @@ var makeTileLayers = function (proj, x_num, y_num, width, height) {
         return false;
     }
     app.beginUndoGroup(SCRIPT_NAME);
-    //TODO: makeTileLayers
     var h = activeLayer.height;
     var w = activeLayer.width;
     if (width === -1) {
-        width = w * x_num;
-        height = h * y_num;
+        width = w * colNum;
+        height = h * rowNum;
     }
     activeItem.width = width;
     activeItem.height = height;
-    var dw = width / x_num;
-    var dh = height / y_num;
+    var tile = new Tile(width, height, colNum, rowNum);
     var pos = activeLayer.position;
-    pos.setValue([dw / 2, dh / 2]);
-    for (var i = 1; i < x_num * y_num; i++) {
-        var x = i % x_num;
-        var y = Math.floor(i / x_num);
+    pos.setValue([tile.dw / 2, tile.dh / 2]);
+    for (var i = 1; i < colNum * rowNum; i++) {
+        var col = i % colNum;
+        var row = Math.floor(i / colNum);
         var layer = activeLayer.duplicate();
-        var multi = (dw * y_num > height) ? dh / h : dw / w;
-        var scale = layer.scale;
-        scale.setValue([
-            multi * 100,
-            multi * 100
-        ]);
-        var pos_1 = layer.position;
-        pos_1.setValue([
-            x * w + dw / 2,
-            y * h + dh / 2
-        ]);
+        makeTileLayer(tile, layer, col, row);
     }
     app.endUndoGroup();
 };
 var makeWindow = function (proj) {
-    var window = new Window("palette", "タイル化スクリプト");
+    var window = new Window("palette", SCRIPT_NAME);
     var panel = window.add("panel", undefined, "入力");
     //分割数コントロール
     var colSlider = new SplitSlider(panel, "列数");

@@ -185,9 +185,9 @@ const makeTileLayers = (proj: Project, colNum: number, rowNum: number, width: nu
     app.beginUndoGroup(SCRIPT_NAME)
 
     const layerH = activeLayer.height
-    const layerW = activeLayer.width
+    const w = activeLayer.width
     if(width === -1){
-        width = layerW * colNum
+        width = w * colNum
         height = layerH * rowNum
     }
     activeItem.width = width

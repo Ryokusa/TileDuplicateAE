@@ -60,23 +60,27 @@ const getActiveItem = (proj: Project): CompItem => {
     return activeItem
 }
 
-const makeTileComps = (proj: Project, x_num: number, y_num: number) => {
+const makeTileComps = (proj: Project, x_num: number, y_num: number, width: number, height: number) => {
     const activeItem = getActiveItem(proj)
     if(!activeItem) {
         alert("コンポジションを選択してください")
         return false
     }
     
+    alert(`${width} ${height}`)
     app.beginUndoGroup(SCRIPT_NAME)
 
     const { height:h , width:w } = activeItem
     const tileComp = proj.items.addComp(
-        "Tile", w*x_num, h*y_num,
+        "Tile", width, height,
         activeItem.pixelAspect,
         activeItem.duration,
         activeItem.frameRate
         )
     const layers = tileComp.layers
+
+    const dw = width / x_num
+    const dh = height / y_num
     
     for (let i = 0; i < x_num*y_num; i++){
         let x = i % x_num
@@ -84,12 +88,17 @@ const makeTileComps = (proj: Project, x_num: number, y_num: number) => {
 
         let item = activeItem.duplicate()
         let layer = layers.add(item)
-        let anchorPos: TwoDPoint = layer.anchorPoint.value as TwoDPoint
+        let multi = ( dw * y_num > height) ? dh/h : dw/w
+        let scale = layer.scale as TwoDProperty
+        scale.setValue([
+            multi*100,
+            multi*100
+        ])
 
         let pos = layer.position as TwoDProperty
         pos.setValue([
-            x * w + anchorPos[0],
-            y * h + anchorPos[1]
+            x * dw + dw/2,
+            y * dh + dh/2
         ])
     }
 
@@ -111,17 +120,16 @@ const makeWindow = (proj: Project) => {
 
     const createBtn = panel.add("button", undefined, "作成")
     createBtn.onClick = () => {
-        if (makeTileComps(proj, colSlider.val, rowSlider.val)){
+        if (makeTileComps(proj, colSlider.val, rowSlider.val, widthEdit.val, heightEdit.val)){
             alert("タイル化完了")
             window.close()
+        }else{
+            alert("タイル化失敗")
         }
     }
 
     return window
 }
-
-//サイズコントロール
-//TODO: 作成
 
 const OpenTileUtils = () => {
     //メイン

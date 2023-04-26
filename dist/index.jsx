@@ -57,26 +57,34 @@ var getActiveItem = function (proj) {
     }
     return activeItem;
 };
-var makeTileComps = function (proj, x_num, y_num) {
+var makeTileComps = function (proj, x_num, y_num, width, height) {
     var activeItem = getActiveItem(proj);
     if (!activeItem) {
         alert("コンポジションを選択してください");
         return false;
     }
+    alert("".concat(width, " ").concat(height));
     app.beginUndoGroup(SCRIPT_NAME);
     var h = activeItem.height, w = activeItem.width;
-    var tileComp = proj.items.addComp("Tile", w * x_num, h * y_num, activeItem.pixelAspect, activeItem.duration, activeItem.frameRate);
+    var tileComp = proj.items.addComp("Tile", width, height, activeItem.pixelAspect, activeItem.duration, activeItem.frameRate);
     var layers = tileComp.layers;
+    var dw = width / x_num;
+    var dh = height / y_num;
     for (var i = 0; i < x_num * y_num; i++) {
         var x = i % x_num;
         var y = Math.floor(i / x_num);
         var item = activeItem.duplicate();
         var layer = layers.add(item);
-        var anchorPos = layer.anchorPoint.value;
+        var multi = (dw * y_num > height) ? dh / h : dw / w;
+        var scale = layer.scale;
+        scale.setValue([
+            multi * 100,
+            multi * 100
+        ]);
         var pos = layer.position;
         pos.setValue([
-            x * w + anchorPos[0],
-            y * h + anchorPos[1]
+            x * dw + dw / 2,
+            y * dh + dh / 2
         ]);
     }
     app.endUndoGroup();
@@ -92,9 +100,12 @@ var makeWindow = function (proj) {
     var heightEdit = new NumEdit(panel, "縦幅", 1080);
     var createBtn = panel.add("button", undefined, "作成");
     createBtn.onClick = function () {
-        if (makeTileComps(proj, colSlider.val, rowSlider.val)) {
+        if (makeTileComps(proj, colSlider.val, rowSlider.val, widthEdit.val, heightEdit.val)) {
             alert("タイル化完了");
             window.close();
+        }
+        else {
+            alert("タイル化失敗");
         }
     };
     return window;

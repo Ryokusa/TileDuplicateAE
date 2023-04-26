@@ -67,6 +67,15 @@ const getActiveItem = (proj: Project): CompItem => {
     return activeItem
 }
 
+const getActiveLayer = (item: CompItem): AVLayer => {
+    if (item.selectedLayers.length !== 1) return undefined
+    const activeLayer = item.selectedLayers[0]
+    if(activeLayer === null || !(activeLayer instanceof AVLayer)){
+        return undefined
+    }
+    return activeLayer
+}
+
 const makeTileComps = (proj: Project, x_num: number, y_num: number, width: number = -1, height: number = -1) => {
     const activeItem = getActiveItem(proj)
     if(!activeItem) {
@@ -116,6 +125,60 @@ const makeTileComps = (proj: Project, x_num: number, y_num: number, width: numbe
     return true
 }
 
+const makeTileLayers = (proj: Project, x_num: number, y_num: number, width: number = -1, height: number = -1) => {
+    const activeItem = getActiveItem(proj)
+    if(!activeItem) {
+        alert("コンポジションを一つ選択してください")
+        return false
+    }
+    
+    const activeLayer = getActiveLayer(activeItem)
+    if(!activeLayer){
+        alert("AVレイヤーを一つ選択してください")
+        return false
+    }
+
+
+    app.beginUndoGroup(SCRIPT_NAME)
+
+    const h = activeLayer.height
+    const w = activeLayer.width
+    if(width === -1){
+        width = w * x_num
+        height = h * y_num
+    }
+    activeItem.width = width
+    activeItem.height = height
+
+    const dw = width / x_num
+    const dh = height / y_num
+
+    const pos = activeLayer.position as TwoDProperty
+    pos.setValue([dw/2, dh/2])
+
+    for (var i = 1; i < x_num*y_num; i++){
+        const x = i % x_num
+        const y = Math.floor(i / x_num)
+
+        const layer = activeLayer.duplicate()
+
+        const multi = ( dw * y_num > height) ? dh/h : dw/w
+        const scale = layer.scale as TwoDProperty
+        scale.setValue([
+            multi*100,
+            multi*100
+        ])
+
+        const pos = layer.position as TwoDProperty
+        pos.setValue([
+            x * w + dw/2,
+            y * h + dh/2
+        ])
+    }
+
+    app.endUndoGroup()
+}
+
 const makeWindow = (proj: Project) => {
     const window = new Window("palette", "タイル化スクリプト")
 
@@ -125,22 +188,27 @@ const makeWindow = (proj: Project) => {
     const colSlider = new SplitSlider(panel, "列数")
     const rowSlider = new SplitSlider(panel, "行数")
 
-    const radio = panel.add("checkbox", undefined, "サイズ指定")
+    const checkbox = panel.add("checkbox", undefined, "サイズ指定")
     const widthEdit = new NumEdit(panel, "横幅", 1920)
     const heightEdit = new NumEdit(panel, "縦幅", 1080)
-    radio.onClick = () => {
-        widthEdit.setEnabled(radio.value)
-        heightEdit.setEnabled(radio.value)
+    checkbox.onClick = () => {
+        widthEdit.setEnabled(checkbox.value)
+        heightEdit.setEnabled(checkbox.value)
     }
-    
+
+    const radioGroup = window.add("group")
+    radioGroup.orientation = "row"
+    const compRadio = radioGroup.add("radiobutton", undefined, "Comp")
+    radioGroup.add("radiobutton", undefined, "Layer")
+    compRadio.value = true
 
     const createBtn = window.add("button", undefined, "作成")
     createBtn.onClick = () => {
         const col = colSlider.val
         const row = rowSlider.val
-        const w = (radio.value) ? widthEdit.val : -1
-        const h = (radio.value) ? heightEdit.val : -1
-        const result = makeTileComps(proj, col, row, w, h)
+        const w = (checkbox.value) ? widthEdit.val : -1
+        const h = (checkbox.value) ? heightEdit.val : -1
+        const result = (compRadio.value) ? makeTileComps(proj, col, row, w, h) : makeTileLayers(proj, col, row, w, h)
 
         if (result){
             alert("タイル化完了")

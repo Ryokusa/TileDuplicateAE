@@ -61,6 +61,15 @@ var getActiveItem = function (proj) {
     }
     return activeItem;
 };
+var getActiveLayer = function (item) {
+    if (item.selectedLayers.length !== 1)
+        return undefined;
+    var activeLayer = item.selectedLayers[0];
+    if (activeLayer === null || !(activeLayer instanceof AVLayer)) {
+        return undefined;
+    }
+    return activeLayer;
+};
 var makeTileComps = function (proj, x_num, y_num, width, height) {
     if (width === void 0) { width = -1; }
     if (height === void 0) { height = -1; }
@@ -99,26 +108,76 @@ var makeTileComps = function (proj, x_num, y_num, width, height) {
     app.endUndoGroup();
     return true;
 };
+var makeTileLayers = function (proj, x_num, y_num, width, height) {
+    if (width === void 0) { width = -1; }
+    if (height === void 0) { height = -1; }
+    var activeItem = getActiveItem(proj);
+    if (!activeItem) {
+        alert("コンポジションを一つ選択してください");
+        return false;
+    }
+    var activeLayer = getActiveLayer(activeItem);
+    if (!activeLayer) {
+        alert("AVレイヤーを一つ選択してください");
+        return false;
+    }
+    app.beginUndoGroup(SCRIPT_NAME);
+    //TODO: makeTileLayers
+    var h = activeLayer.height;
+    var w = activeLayer.width;
+    if (width === -1) {
+        width = w * x_num;
+        height = h * y_num;
+    }
+    activeItem.width = width;
+    activeItem.height = height;
+    var dw = width / x_num;
+    var dh = height / y_num;
+    var pos = activeLayer.position;
+    pos.setValue([dw / 2, dh / 2]);
+    for (var i = 1; i < x_num * y_num; i++) {
+        var x = i % x_num;
+        var y = Math.floor(i / x_num);
+        var layer = activeLayer.duplicate();
+        var multi = (dw * y_num > height) ? dh / h : dw / w;
+        var scale = layer.scale;
+        scale.setValue([
+            multi * 100,
+            multi * 100
+        ]);
+        var pos_1 = layer.position;
+        pos_1.setValue([
+            x * w + dw / 2,
+            y * h + dh / 2
+        ]);
+    }
+    app.endUndoGroup();
+};
 var makeWindow = function (proj) {
     var window = new Window("palette", "タイル化スクリプト");
     var panel = window.add("panel", undefined, "入力");
     //分割数コントロール
     var colSlider = new SplitSlider(panel, "列数");
     var rowSlider = new SplitSlider(panel, "行数");
-    var radio = panel.add("checkbox", undefined, "サイズ指定");
+    var checkbox = panel.add("checkbox", undefined, "サイズ指定");
     var widthEdit = new NumEdit(panel, "横幅", 1920);
     var heightEdit = new NumEdit(panel, "縦幅", 1080);
-    radio.onClick = function () {
-        widthEdit.setEnabled(radio.value);
-        heightEdit.setEnabled(radio.value);
+    checkbox.onClick = function () {
+        widthEdit.setEnabled(checkbox.value);
+        heightEdit.setEnabled(checkbox.value);
     };
+    var radioGroup = window.add("group");
+    radioGroup.orientation = "row";
+    var compRadio = radioGroup.add("radiobutton", undefined, "Comp");
+    radioGroup.add("radiobutton", undefined, "Layer");
+    compRadio.value = true;
     var createBtn = window.add("button", undefined, "作成");
     createBtn.onClick = function () {
         var col = colSlider.val;
         var row = rowSlider.val;
-        var w = (radio.value) ? widthEdit.val : -1;
-        var h = (radio.value) ? heightEdit.val : -1;
-        var result = makeTileComps(proj, col, row, w, h);
+        var w = (checkbox.value) ? widthEdit.val : -1;
+        var h = (checkbox.value) ? heightEdit.val : -1;
+        var result = (compRadio.value) ? makeTileComps(proj, col, row, w, h) : makeTileLayers(proj, col, row, w, h);
         if (result) {
             alert("タイル化完了");
             window.close();
